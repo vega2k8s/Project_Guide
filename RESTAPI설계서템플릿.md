@@ -1701,258 +1701,9 @@ public ResponseEntity<List<BookDTOV2>> getBooksV2() {
 }
 ```
 
----
+## 11. 체크리스트 및 품질 관리
 
-## 11. 모니터링 및 로깅
-
-### 11.1 API 메트릭 수집
-```yaml
-# Micrometer + Prometheus 메트릭
-http_requests_total{method="GET", endpoint="/api/v1/books", status="200"} 1523
-http_request_duration_seconds{method="GET", endpoint="/api/v1/books", quantile="0.5"} 0.1
-http_request_duration_seconds{method="GET", endpoint="/api/v1/books", quantile="0.95"} 0.5
-
-# 커스텀 비즈니스 메트릭
-loan_requests_total{status="success"} 456
-loan_requests_total{status="failed"} 12
-book_searches_total{category="fiction"} 789
-```
-
-### 11.2 구조화된 로깅
-```json
-// 요청 로그
-{
-  "timestamp": "2025-05-26T10:30:00.123Z",
-  "level": "INFO",
-  "logger": "com.library.api.BookController",
-  "message": "API 요청 수신",
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
-  "method": "GET",
-  "uri": "/api/v1/books",
-  "userAgent": "LibraryApp/1.0.0",
-  "clientIp": "192.168.1.100",
-  "userId": 123,
-  "parameters": {
-    "page": 0,
-    "size": 20,
-    "search": "김지영"
-  }
-}
-
-// 응답 로그
-{
-  "timestamp": "2025-05-26T10:30:00.456Z",
-  "level": "INFO", 
-  "logger": "com.library.api.BookController",
-  "message": "API 응답 전송",
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
-  "method": "GET",
-  "uri": "/api/v1/books",
-  "statusCode": 200,
-  "responseTime": 333,
-  "responseSize": 2048,
-  "resultCount": 20
-}
-
-// 에러 로그
-{
-  "timestamp": "2025-05-26T10:30:01.789Z",
-  "level": "ERROR",
-  "logger": "com.library.api.LoanController", 
-  "message": "대출 생성 실패",
-  "requestId": "550e8400-e29b-41d4-a716-446655440001",
-  "errorCode": "LOAN_LIMIT_EXCEEDED",
-  "userId": 123,
-  "bookId": 456,
-  "exception": "com.library.exception.LoanLimitExceededException",
-  "stackTrace": "..."
-}
-```
-
-### 11.3 헬스체크 및 상태 확인
-```yaml
-# 헬스체크 엔드포인트
-GET /api/health
-
-Response (200 OK):
-{
-  "status": "UP",
-  "timestamp": "2025-05-26T10:30:00Z",
-  "checks": {
-    "database": {
-      "status": "UP",
-      "responseTime": 45
-    },
-    "redis": {
-      "status": "UP", 
-      "responseTime": 12
-    },
-    "external-api": {
-      "status": "DOWN",
-      "responseTime": 5000,
-      "error": "Connection timeout"
-    }
-  },
-  "version": "1.0.0",
-  "uptime": "7d 14h 32m"
-}
-
-# 상세 시스템 정보
-GET /api/info
-
-Response (200 OK):
-{
-  "app": {
-    "name": "Library Management API",
-    "version": "1.0.0",
-    "buildTime": "2025-05-20T08:00:00Z",
-    "gitCommit": "abc1234"
-  },
-  "system": {
-    "javaVersion": "11.0.19",
-    "activeProfiles": ["prod"],
-    "timezone": "Asia/Seoul"
-  },
-  "metrics": {
-    "totalRequests": 1523456,
-    "activeConnections": 45,
-    "memoryUsage": "512MB / 2GB"
-  }
-}
-```
-
----
-
-## 12. 배포 및 운영
-
-### 12.1 환경별 설정
-```yaml
-# application.yml (공통)
-spring:
-  application:
-    name: library-api
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
-
-api:
-  version: v1
-  base-url: ${API_BASE_URL}
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS}
-
-# application-dev.yml (개발환경)
-api:
-  base-url: http://localhost:8080/api/v1
-  cors:
-    allowed-origins: "*"
-  
-logging:
-  level:
-    com.library: DEBUG
-    
-security:
-  jwt:
-    expiration: 3600000  # 1시간
-
-# application-prod.yml (운영환경)
-api:
-  base-url: https://api.library.com/v1
-  cors:
-    allowed-origins: "https://library.com,https://app.library.com"
-
-logging:
-  level:
-    root: WARN
-    com.library: INFO
-
-security:
-  jwt:
-    expiration: 1800000  # 30분
-
-rate-limiting:
-  enabled: true
-  requests-per-hour: 1000
-```
-
-### 12.2 CI/CD 파이프라인
-```yaml
-# .github/workflows/api-deploy.yml
-name: API Deploy
-
-on:
-  push:
-    branches: [main]
-    paths: ['src/**', 'pom.xml']
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-      - name: Run tests
-        run: mvn test
-      - name: Integration tests
-        run: mvn verify -P integration-test
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Deploy to staging
-        run: |
-          # 스테이징 배포 스크립트
-      - name: API smoke tests
-        run: |
-          # API 연결 테스트
-      - name: Deploy to production
-        run: |
-          # 운영 배포 스크립트
-```
-
-### 12.3 API 게이트웨이 설정
-```yaml
-# API Gateway (Kong/Nginx) 설정 예시
-services:
-  - name: library-api
-    url: http://api-backend:8080
-    routes:
-      - name: api-v1
-        paths: ["/api/v1"]
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
-        
-plugins:
-  - name: rate-limiting
-    config:
-      minute: 100
-      hour: 1000
-      
-  - name: cors
-    config:
-      origins: ["https://library.com"]
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
-      headers: ["Accept", "Authorization", "Content-Type"]
-      
-  - name: jwt
-    config:
-      secret_is_base64: false
-      key_claim_name: sub
-      
-  - name: request-transformer
-    config:
-      add:
-        headers: ["X-Request-ID:$(uuid)"]
-```
-
----
-
-## 13. 체크리스트 및 품질 관리
-
-### 13.1 API 설계 체크리스트
+### 11.1 API 설계 체크리스트
 ```
 □ RESTful 원칙을 준수하는가?
 □ URL 네이밍 규칙이 일관되는가?
@@ -1964,76 +1715,46 @@ plugins:
 □ 페이지네이션이 구현되어 있는가?
 □ 필드 선택(Sparse Fieldsets)을 지원하는가?
 □ 적절한 인증/인가가 구현되어 있는가?
-□ Rate Limiting이 적용되어 있는가?
 □ API 문서가 완전하고 정확한가?
-□ 예제 요청/응답이 제공되는가?
-□ 테스트 코드가 충분한가?
-□ 성능 요구사항을 만족하는가?
 ```
 
-### 13.2 보안 체크리스트
+### 11.2 보안 체크리스트
 ```
-□ HTTPS가 강제되는가?
 □ 입력값 검증이 충분한가?
-□ SQL 인젝션 방지가 되어 있는가?
-□ XSS 방지가 되어 있는가?
-□ CSRF 방지가 되어 있는가?
 □ 민감한 정보가 로그에 남지 않는가?
 □ JWT 토큰이 안전하게 관리되는가?
 □ 권한 체크가 모든 엔드포인트에 적용되는가?
-□ Rate Limiting이 적절히 설정되어 있는가?
 □ 에러 메시지에서 시스템 정보가 노출되지 않는가?
 ```
 
 ### 13.3 성능 체크리스트
 ```
-□ 응답 시간이 요구사항을 만족하는가?
-□ 대용량 데이터 처리가 최적화되어 있는가?
-□ 캐싱 전략이 적절한가?
 □ N+1 쿼리 문제가 해결되었는가?
 □ 데이터베이스 인덱스가 적절한가?
-□ 페이지네이션이 성능을 고려하여 구현되었는가?
-□ 압축이 적용되어 있는가?
-□ CDN 사용을 고려했는가?
 ```
 
 ---
 
-## 14. 마무리
+## 12. 마무리
 
-### 14.1 주요 포인트 요약
+### 12.1 주요 포인트 요약
 1. **RESTful 설계**: HTTP 메서드와 상태 코드의 올바른 사용
 2. **일관성 유지**: 모든 API에서 동일한 규칙과 형식 적용
 3. **보안 강화**: 인증, 인가, 입력 검증을 통한 보안 확보
-4. **성능 최적화**: 페이지네이션
-5. **문서화**: 명확하고 완전한 API 문서 제공
+4. **문서화**: 명확하고 완전한 API 문서 제공
 
-### 14.2 추천 도구 및 라이브러리
+### 12.2 추천 도구 및 라이브러리
 - **문서화**: Swagger/OpenAPI, Postman
 - **보안**: Spring Security, JWT
 
-### 14.3 향후 고도화 방안
+### 12.3 향후 고도화 방안
 - **GraphQL 지원**: 클라이언트별 맞춤 데이터 제공
 - **WebSocket**: 실시간 알림 및 채팅 기능
 - **이벤트 기반 아키텍처**: 마이크로서비스 간 느슨한 결합
 - **API 게이트웨이**: 중앙화된 API 관리
-- **OpenAPI 기반 코드 생성**: API 스펙으로부터 클라이언트 코드 자동 생성
 - **성능**: 캐싱, 압축을 통한 성능 향상 Redis, Caffeine Cache
 - **테스트**: REST Assured, WireMock, TestContainers
 - **모니터링**: 로깅, 메트릭을 통한 운영 상황 파악 Micrometer, Prometheus, Grafana
 
 ---
-
-## 부록: 실무 적용 예시
-
-### A.1 프로젝트별 커스터마이징 가이드
-- **소규모 프로젝트**: 기본 CRUD + 인증만 구현
-- **중규모 프로젝트**: 페이지네이션 + 검색 + 권한 관리 추가
-- **대규모 프로젝트**: 모든 기능 + 성능 최적화 + 모니터링
-
-### A.2 팀 역할별 활용법
-- **백엔드 개발자**: 섹션 4(상세 API 명세) 중점 활용
-- **프론트엔드 개발자**: 섹션 2(공통 규칙) + 응답 형식 참고
-- **QA 엔지니어**: 섹션 8(테스트 전략) 활용
-- **DevOps 엔지니어**: 섹션 12(배포 및 운영) 참고
             
