@@ -2005,23 +2005,22 @@ plugins:
 1. **RESTful 설계**: HTTP 메서드와 상태 코드의 올바른 사용
 2. **일관성 유지**: 모든 API에서 동일한 규칙과 형식 적용
 3. **보안 강화**: 인증, 인가, 입력 검증을 통한 보안 확보
-4. **성능 최적화**: 페이지네이션, 캐싱, 압축을 통한 성능 향상
+4. **성능 최적화**: 페이지네이션
 5. **문서화**: 명확하고 완전한 API 문서 제공
-6. **모니터링**: 로깅, 메트릭을 통한 운영 상황 파악
 
-### 14.2 향후 고도화 방안
+### 14.2 추천 도구 및 라이브러리
+- **문서화**: Swagger/OpenAPI, Postman
+- **보안**: Spring Security, JWT
+
+### 14.3 향후 고도화 방안
 - **GraphQL 지원**: 클라이언트별 맞춤 데이터 제공
 - **WebSocket**: 실시간 알림 및 채팅 기능
 - **이벤트 기반 아키텍처**: 마이크로서비스 간 느슨한 결합
 - **API 게이트웨이**: 중앙화된 API 관리
 - **OpenAPI 기반 코드 생성**: API 스펙으로부터 클라이언트 코드 자동 생성
-
-### 14.3 추천 도구 및 라이브러리
-- **문서화**: Swagger/OpenAPI, Postman
+- **성능**: 캐싱, 압축을 통한 성능 향상 Redis, Caffeine Cache
 - **테스트**: REST Assured, WireMock, TestContainers
-- **모니터링**: Micrometer, Prometheus, Grafana
-- **보안**: Spring Security, JWT
-- **성능**: Redis, Caffeine Cache
+- **모니터링**: 로깅, 메트릭을 통한 운영 상황 파악 Micrometer, Prometheus, Grafana
 
 ---
 
