@@ -139,38 +139,7 @@ public class Member extends BaseEntity {
 | **status** | `MemberStatus` | `status` | NOT NULL, ENUM | 회원 상태 | ACTIVE, SUSPENDED, WITHDRAWN |
 | **maxLoanCount** | `Integer` | `max_loan_count` | NOT NULL, DEFAULT(5) | 최대 대출 권수 | 1-10 범위 |
 
-#### 4.1.3 검증 어노테이션
-```java
-@Column(name = "member_number", unique = true, nullable = false, length = 10)
-@Pattern(regexp = "^M\\d{9}$", message = "회원번호는 M으로 시작하는 10자리여야 합니다")
-private String memberNumber;
-
-@Column(nullable = false, length = 50)
-@NotBlank(message = "이름은 필수입니다")
-@Size(min = 2, max = 50, message = "이름은 2-50자 사이여야 합니다")
-private String name;
-
-@Column(unique = true, nullable = false, length = 100)
-@Email(message = "올바른 이메일 형식이어야 합니다")
-@NotBlank(message = "이메일은 필수입니다")
-private String email;
-
-@Column(name = "phone_number", length = 15)
-@Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", 
-         message = "전화번호 형식이 올바르지 않습니다")
-private String phoneNumber;
-
-@Enumerated(EnumType.STRING)
-@Column(nullable = false)
-private MemberStatus status = MemberStatus.ACTIVE;
-
-@Column(name = "max_loan_count", nullable = false)
-@Min(value = 1, message = "최대 대출 권수는 1 이상이어야 합니다")
-@Max(value = 10, message = "최대 대출 권수는 10 이하여야 합니다")
-private Integer maxLoanCount = 5;
-```
-
-#### 4.1.4 연관관계 매핑
+#### 4.1.3 연관관계 매핑
 ```java
 // 1:N - 회원의 대출 목록
 @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -181,102 +150,6 @@ private List<Loan> loans = new ArrayList<>();
 @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 @OrderBy("createdAt DESC")
 private List<Reservation> reservations = new ArrayList<>();
-```
-
-#### 4.1.5 비즈니스 메서드
-```java
-/**
- * 추가 대출 가능 여부 확인
- * @return 대출 가능하면 true
- */
-public boolean canLoanMore() {
-    long currentLoanCount = loans.stream()
-        .filter(loan -> loan.getStatus() == LoanStatus.BORROWED)
-        .count();
-    return currentLoanCount < maxLoanCount && status == MemberStatus.ACTIVE;
-}
-
-/**
- * 연체 도서 보유 여부 확인
- * @return 연체 도서가 있으면 true
- */
-public boolean hasOverdueLoans() {
-    return loans.stream()
-        .anyMatch(loan -> loan.isOverdue());
-}
-
-/**
- * 현재 대출 중인 도서 수 조회
- * @return 대출 중인 도서 수
- */
-public long getCurrentLoanCount() {
-    return loans.stream()
-        .filter(loan -> loan.getStatus() == LoanStatus.BORROWED)
-        .count();
-}
-
-/**
- * 회원 정보 업데이트
- * @param name 이름
- * @param phoneNumber 전화번호
- * @param address 주소
- */
-public void updateInfo(String name, String phoneNumber, String address) {
-    if (StringUtils.hasText(name)) {
-        this.name = name;
-    }
-    this.phoneNumber = phoneNumber;
-    this.address = address;
-}
-
-/**
- * 회원 상태 변경
- * @param status 변경할 상태
- * @param reason 변경 사유
- */
-public void changeStatus(MemberStatus status, String reason) {
-    if (this.status != status) {
-        this.status = status;
-        // 상태 변경 이력 기록 (별도 Entity)
-        // this.statusHistories.add(new MemberStatusHistory(this.status, status, reason));
-    }
-}
-```
-
-#### 4.1.6 생성자 및 팩토리 메서드
-```java
-@Builder
-private Member(String memberNumber, String name, String email, String password, 
-               String phoneNumber, LocalDate birthDate, String address) {
-    this.memberNumber = memberNumber;
-    this.name = name;
-    this.email = email;
-    this.password = password;
-    this.phoneNumber = phoneNumber;
-    this.birthDate = birthDate;
-    this.address = address;
-    this.status = MemberStatus.ACTIVE;
-    this.maxLoanCount = 5;
-}
-
-/**
- * 새 회원 생성 팩토리 메서드
- */
-public static Member createMember(String name, String email, String password, 
-                                 String phoneNumber, LocalDate birthDate, String address) {
-    String memberNumber = generateMemberNumber(); // 별도 서비스에서 생성
-    String encodedPassword = encodePassword(password); // 비밀번호 암호화
-    
-    return Member.builder()
-        .memberNumber(memberNumber)
-        .name(name)
-        .email(email)
-        .password(encodedPassword)
-        .phoneNumber(phoneNumber)
-        .birthDate(birthDate)
-        .address(address)
-        .build();
-}
 ```
 
 ### 4.2 Book Entity
@@ -1075,10 +948,10 @@ public class QueryPerformanceInterceptor implements Interceptor {
 □ Primary Key 전략이 일관되게 적용되었는가?
 □ 필요한 인덱스가 모두 정의되었는가?
 □ 연관관계 매핑이 올바르게 설정되었는가?
-□ 검증 어노테이션이 적절히 사용되었는가?
 □ 비즈니스 메서드가 Entity에 포함되었는가?
 □ 감사(Auditing) 기능이 적용되었는가?
 □ 성능 최적화가 고려되었는가?
+□ 검증 어노테이션이 적절히 사용되었는가?
 ```
 
 ### 12.2 코드 품질 체크리스트
@@ -1101,7 +974,6 @@ public class QueryPerformanceInterceptor implements Interceptor {
 □ 쿼리 최적화가 적용되었는가?
 □ 데이터베이스 커넥션 풀이 적절히 설정되었는가?
 ```
-
 ---
 
 ## 14. 마무리

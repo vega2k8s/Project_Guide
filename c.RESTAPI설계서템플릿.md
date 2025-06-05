@@ -6,7 +6,6 @@
 - **작성일**: [YYYY-MM-DD]
 - **버전**: [v1.0]
 - **검토자**: [백엔드 개발자명]
-- **승인자**: [팀 리더명]
 - **API 버전**: v1
 - **Base URL**: https://localhost:8080/api
 
@@ -21,8 +20,8 @@
 - **RESTful 아키텍처**: HTTP 메서드와 상태 코드의 올바른 사용
 - **일관성**: 모든 API 엔드포인트에서 동일한 규칙 적용
 - **버전 관리**: URL 경로를 통한 버전 구분
-- **보안**: JWT 기반 인증 및 HTTPS 필수
-- **성능**: 페이지네이션, 캐싱, 압축 지원
+- **보안**: JWT 기반 인증 또는 외부 기능을 이용한 인증증
+- **성능**: 페이지네이션, 캐싱
 - **문서화**: 명확한 요청/응답 스펙 제공
 
 ### 1.3 기술 스택
@@ -127,22 +126,9 @@ User-Agent: LibraryApp/1.0.0
 #### 에러 응답
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "입력값이 올바르지 않습니다",
-    "details": [
-      {
-        "field": "email",
-        "message": "이메일 형식이 올바르지 않습니다",
-        "rejectedValue": "invalid-email"
-      }
-    ],
-    "path": "/api/members",
-    "method": "POST"
-  },
-  "timestamp": "2025-05-26T10:30:00Z",
-  "requestId": "550e8400-e29b-41d4-a716-446655440002"
+  "statusCode": "400",
+  "message": "이메일 형식이 올바르지 않습니다",
+  "timestamp": "2025-05-26T10:30:00Z"
 }
 ```
 
@@ -1220,280 +1206,9 @@ Response (400 Bad Request):
 
 ---
 
-## 6. API 성능 최적화
+## 6. API 문서화
 
-### 6.1 페이지네이션 전략
-```yaml
-# 기본 페이지네이션
-GET /api/books?page=0&size=20&sort=title,asc
-
-# 커서 기반 페이지네이션 (대용량 데이터용)
-GET /api/loans?cursor=eyJpZCI6MTAwMCwiY3JlYXRlZEF0IjoiMjAyNS0wNS0yNlQxMDowMDowMFoifQ&size=20
-
-Response:
-{
-  "data": {
-    "content": [...],
-    "cursor": {
-      "next": "eyJpZCI6MTAyMCwiY3JlYXRlZEF0IjoiMjAyNS0wNS0yNlQxMTowMDowMFoifQ",
-      "hasNext": true
-    }
-  }
-}
-```
-
-### 6.2 필드 선택 (Sparse Fieldsets)
-```yaml
-# 필요한 필드만 요청
-GET /api/books?fields=id,title,author,availableCopies
-
-Response:
-{
-  "data": {
-    "content": [
-      {
-        "id": 1,
-        "title": "82년생 김지영",
-        "author": "조남주",
-        "availableCopies": 1
-      }
-    ]
-  }
-}
-```
-
-### 6.3 조건부 요청 (Conditional Requests)
-```yaml
-# ETag 기반 캐싱
-GET /api/v1/books/1
-If-None-Match: "33a64df551425fcc55e4d42a148795d9f25f89d4"
-
-Response (304 Not Modified):
-# 캐시된 데이터 사용
-
-# Last-Modified 기반 캐싱
-GET /api/v1/books/1
-If-Modified-Since: Wed, 25 May 2025 10:30:00 GMT
-
-Response (304 Not Modified):
-# 캐시된 데이터 사용
-```
-
-### 6.4 배치 요청 (Batch Requests)
-```yaml
-# 여러 리소스 한 번에 요청
-POST /api/v1/batch
-Content-Type: application/json
-
-Request Body:
-{
-  "requests": [
-    {
-      "id": "req1",
-      "method": "GET",
-      "url": "/api/v1/books/1"
-    },
-    {
-      "id": "req2",
-      "method": "GET",
-      "url": "/api/v1/books/2"
-    }
-  ]
-}
-
-Response:
-{
-  "responses": [
-    {
-      "id": "req1",
-      "status": 200,
-      "body": { /* book 1 data */ }
-    },
-    {
-      "id": "req2",
-      "status": 200,
-      "body": { /* book 2 data */ }
-    }
-  ]
-}
-```
-
----
-
-## 7. API 보안
-
-### 7.1 인증 보안
-```yaml
-# JWT 토큰 구조
-Header:
-{
-  "alg": "HS256",
-  "typ": "JWT"
-}
-
-Payload:
-{
-  "sub": "1",
-  "email": "user@example.com",
-  "role": "MEMBER",
-  "iat": 1653641400,
-  "exp": 1653645000,
-  "jti": "550e8400-e29b-41d4-a716-446655440000"
-}
-
-# 토큰 보안 설정
-- 액세스 토큰 만료: 1시간
-- 리프레시 토큰 만료: 7일
-- 토큰 회전: 리프레시 시 새로운 토큰 발급
-- 토큰 블랙리스트: 로그아웃 시 토큰 무효화
-```
-
-### 7.2 요청 제한 (Rate Limiting)
-```yaml
-# 요청 한도 설정
-- 일반 API: 1000 requests/hour
-- 인증 API: 10 requests/minute
-- 검색 API: 100 requests/minute
-
-# 응답 헤더
-X-RateLimit-Limit: 1000
-X-RateLimit-Remaining: 999
-X-RateLimit-Reset: 1653645000
-
-# 한도 초과 시 응답
-Response (429 Too Many Requests):
-{
-  "success": false,
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "요청 한도를 초과했습니다",
-    "retryAfter": 3600
-  }
-}
-```
-
-### 7.3 입력 검증 및 소독
-```yaml
-# SQL 인젝션 방지
-- Prepared Statement 사용
-- 입력값 타입 검증
-- 특수문자 이스케이프
-
-# XSS 방지
-- HTML 태그 제거/이스케이프
-- Content-Security-Policy 헤더 설정
-- 출력 시 인코딩
-
-# CSRF 방지
-- SameSite 쿠키 설정
-- CSRF 토큰 검증 (상태 변경 요청)
-```
-
----
-
-## 8. API 테스트 전략
-
-### 8.1 단위 테스트 예시
-```java
-@WebMvcTest(BookController.class)
-class BookControllerTest {
-
-    @Test
-    void getBooks_ShouldReturnPagedBooks() throws Exception {
-        // given
-        Page<BookDTO> books = createMockBooks();
-        when(bookService.getBooks(any(Pageable.class), any())).thenReturn(books);
-
-        // when & then
-        mockMvc.perform(get("/api/v1/books")
-                .param("page", "0")
-                .param("size", "20")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.content").isArray())
-                .andExpect(jsonPath("$.data.page.number").value(0))
-                .andExpect(jsonPath("$.data.page.size").value(20));
-    }
-
-    @Test
-    void createBook_WithInvalidISBN_ShouldReturnValidationError() throws Exception {
-        // given
-        CreateBookRequest request = CreateBookRequest.builder()
-                .isbn("invalid-isbn")
-                .title("Test Book")
-                .author("Test Author")
-                .categoryId(1L)
-                .build();
-
-        // when & then
-        mockMvc.perform(post("/api/v1/books")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.error.details[0].field").value("isbn"));
-    }
-}
-```
-
-### 8.2 통합 테스트 예시
-```java
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class LoanApiIntegrationTest {
-
-    @Test
-    void createLoan_ShouldCreateLoanSuccessfully() {
-        // given
-        String accessToken = obtainAccessToken("user@example.com", "password");
-        CreateLoanRequest request = new CreateLoanRequest(1L, "Test loan");
-
-        // when
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + accessToken)
-                .body(request)
-                .when()
-                .post("/api/v1/loans")
-                .then()
-                .statusCode(201)
-                .extract().response();
-
-        // then
-        assertThat(response.jsonPath().getBoolean("success")).isTrue();
-        assertThat(response.jsonPath().getString("data.status")).isEqualTo("REQUESTED");
-    }
-}
-```
-
-### 8.3 성능 테스트 예시
-```yaml
-# JMeter 테스트 계획
-Thread Group: 100 users
-Ramp-up Period: 60 seconds
-Loop Count: 10
-
-Test Scenarios:
-1. 도서 목록 조회: GET /api/v1/books
-   - Expected Response Time: < 500ms
-   - Expected Throughput: > 100 requests/second
-
-2. 로그인: POST /api/v1/auth/login
-   - Expected Response Time: < 1000ms
-   - Expected Throughput: > 50 requests/second
-
-3. 대출 신청: POST /api/v1/loans
-   - Expected Response Time: < 2000ms
-   - Expected Throughput: > 20 requests/second
-```
-
----
-
-## 9. API 문서화
-
-### 9.1 OpenAPI 3.0 스펙 예시
+### 6.1 OpenAPI 3.0 스펙 예시
 ```yaml
 openapi: 3.0.3
 info:
@@ -1567,7 +1282,7 @@ paths:
                 $ref: '#/components/schemas/PagedBooksResponse'
 ```
 
-### 9.2 API 문서 생성 도구
+### 6.2 API 문서 생성 도구
 ```java
 // Spring Boot + Swagger 설정
 @Configuration
@@ -1619,91 +1334,9 @@ public class BookController {
 }
 ```
 
----
+## 7. 체크리스트 및 품질 관리
 
-## 10. API 버전 관리
-
-### 10.1 버전 관리 전략
-```yaml
-# URL 경로 버전 관리 (권장)
-/api/v1/books  # 버전 1
-/api/v2/books  # 버전 2
-
-# 헤더 기반 버전 관리
-Accept: application/vnd.library.v1+json
-Accept: application/vnd.library.v2+json
-
-# 쿼리 파라미터 버전 관리
-/api/books?version=1
-/api/books?version=2
-```
-
-### 10.2 하위 호환성 유지
-```yaml
-# v1 API (기존)
-Response:
-{
-  "id": 1,
-  "title": "82년생 김지영",
-  "author": "조남주"
-}
-
-# v2 API (필드 추가)
-Response:
-{
-  "id": 1,
-  "title": "82년생 김지영", 
-  "author": "조남주",
-  "subtitle": null,          # 새 필드 추가
-  "coAuthor": null,          # 새 필드 추가
-  "averageRating": 4.5       # 새 필드 추가
-}
-
-# Deprecated API 안내
-Response Headers:
-Warning: 299 - "API version 1 is deprecated and will be removed on 2025-12-31"
-Sunset: Wed, 31 Dec 2025 23:59:59 GMT
-```
-
-### 10.3 버전별 라우팅 설정
-```java
-// Spring Boot 버전별 컨트롤러
-@RestController
-@RequestMapping("/api/v1/books")
-public class BookControllerV1 {
-    // v1 구현
-}
-
-@RestController
-@RequestMapping("/api/v2/books")
-public class BookControllerV2 {
-    // v2 구현
-}
-
-// 커스텀 버전 매핑
-@Target({ElementType.METHOD, ElementType.TYPE})
-@Retention(RetentionPolicy.RUNTIME)
-@RequestMapping
-public @interface ApiVersion {
-    String value();
-}
-
-@ApiVersion("v1")
-@GetMapping("/books")
-public ResponseEntity<List<BookDTO>> getBooksV1() {
-    // v1 구현
-}
-
-@ApiVersion("v2") 
-@GetMapping("/books")
-public ResponseEntity<List<BookDTOV2>> getBooksV2() {
-    // v2 구현
-}
-```
-
-## 11. 체크리스트 및 품질 관리
-
-### 11.1 API 설계 체크리스트
+### 7.1 API 설계 체크리스트
 ```
 □ RESTful 원칙을 준수하는가?
 □ URL 네이밍 규칙이 일관되는가?
@@ -1711,43 +1344,37 @@ public ResponseEntity<List<BookDTOV2>> getBooksV2() {
 □ HTTP 상태 코드를 적절히 사용하는가?
 □ 요청/응답 형식이 표준화되어 있는가?
 □ 에러 응답이 명확하고 도움이 되는가?
-□ API 버전 관리 전략이 있는가?
 □ 페이지네이션이 구현되어 있는가?
-□ 필드 선택(Sparse Fieldsets)을 지원하는가?
 □ 적절한 인증/인가가 구현되어 있는가?
-□ API 문서가 완전하고 정확한가?
 ```
 
-### 11.2 보안 체크리스트
+### 7.2 보안 체크리스트
 ```
 □ 입력값 검증이 충분한가?
-□ 민감한 정보가 로그에 남지 않는가?
 □ JWT 토큰이 안전하게 관리되는가?
 □ 권한 체크가 모든 엔드포인트에 적용되는가?
 □ 에러 메시지에서 시스템 정보가 노출되지 않는가?
 ```
 
-### 13.3 성능 체크리스트
+### 7.3 성능 체크리스트
 ```
 □ N+1 쿼리 문제가 해결되었는가?
 □ 데이터베이스 인덱스가 적절한가?
 ```
 
----
+## 8. 마무리
 
-## 12. 마무리
-
-### 12.1 주요 포인트 요약
+### 8.1 주요 포인트 요약
 1. **RESTful 설계**: HTTP 메서드와 상태 코드의 올바른 사용
 2. **일관성 유지**: 모든 API에서 동일한 규칙과 형식 적용
 3. **보안 강화**: 인증, 인가, 입력 검증을 통한 보안 확보
 4. **문서화**: 명확하고 완전한 API 문서 제공
 
-### 12.2 추천 도구 및 라이브러리
+### 8.2 추천 도구 및 라이브러리
 - **문서화**: Swagger/OpenAPI, Postman
 - **보안**: Spring Security, JWT
 
-### 12.3 향후 고도화 방안
+### 8.3 향후 고도화 방안
 - **GraphQL 지원**: 클라이언트별 맞춤 데이터 제공
 - **WebSocket**: 실시간 알림 및 채팅 기능
 - **이벤트 기반 아키텍처**: 마이크로서비스 간 느슨한 결합
